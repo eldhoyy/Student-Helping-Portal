@@ -1,8 +1,7 @@
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
 
 export const LANGUAGE_COOKIE_NAME = "site_language";
-export type SiteLanguage = string;
+export type SiteLanguage = "en";
 
 export type SiteSettingsSnapshot = {
   siteName: string;
@@ -20,83 +19,67 @@ export type SiteSettingsSnapshot = {
 };
 
 const defaultSettings: SiteSettingsSnapshot = {
-  siteName: "Student Helping Portal",
+  siteName: "KTU Connect",
   siteLanguage: "en",
   logoUrl: null,
-  contactEmail: "info@studentportal.com",
+  contactEmail: "admin@ktuconnect.in",
   phone: null,
-  address: null,
+  address: "Kerala, India",
   facebookUrl: null,
   twitterUrl: null,
   linkedinUrl: null,
   youtubeUrl: null,
-  seoTitle: null,
-  seoDescription: null,
+  seoTitle: "KTU Connect — Kerala Technical University Student Ecosystem",
+  seoDescription:
+    "KTU Connect is a student-first academic ecosystem for KTU students to find resources, notices, exams, academic information and opportunities.",
 };
-
-function normalizeLanguage(input: string | null | undefined): SiteLanguage {
-  return input?.trim().toLowerCase() || "en";
-}
 
 export async function getSiteSettings(): Promise<SiteSettingsSnapshot> {
   try {
-    const settings = await prisma.siteSetting.findFirst();
+    const settings = await prisma.siteSetting.findFirst({
+      select: {
+        siteName: true,
+        siteLanguage: true,
+        logoUrl: true,
+        contactEmail: true,
+        phone: true,
+        address: true,
+        facebookUrl: true,
+        twitterUrl: true,
+        linkedinUrl: true,
+        youtubeUrl: true,
+        seoTitle: true,
+        seoDescription: true,
+      },
+    });
+
     if (!settings) return defaultSettings;
 
     return {
-      siteName: settings.siteName,
-      siteLanguage: normalizeLanguage(settings.siteLanguage),
+      siteName: "KTU Connect",
+      siteLanguage: "en",
       logoUrl: settings.logoUrl,
-      contactEmail: settings.contactEmail,
+      contactEmail: settings.contactEmail || defaultSettings.contactEmail,
       phone: settings.phone,
-      address: settings.address,
+      address: settings.address || defaultSettings.address,
       facebookUrl: settings.facebookUrl,
       twitterUrl: settings.twitterUrl,
       linkedinUrl: settings.linkedinUrl,
       youtubeUrl: settings.youtubeUrl,
-      seoTitle: settings.seoTitle,
-      seoDescription: settings.seoDescription,
+      seoTitle: settings.seoTitle || defaultSettings.seoTitle,
+      seoDescription: settings.seoDescription || defaultSettings.seoDescription,
     };
   } catch {
     return defaultSettings;
   }
 }
 
-export async function getActiveLanguages() {
-  try {
-    const languages = await prisma.language.findMany({
-      where: { isActive: true },
-      orderBy: [{ isDefault: "desc" }, { name: "asc" }],
-      select: { code: true, name: true, nativeName: true, isDefault: true },
-    });
-    if (languages.length > 0) return languages;
-  } catch {
-    // fall back to defaults below
-  }
-
-  return [
-    { code: "en", name: "English", nativeName: "English", isDefault: true },
-    { code: "bn", name: "Bangla", nativeName: "বাংলা", isDefault: false },
-  ];
+// KTU Connect is intentionally English-only. The old multi-language system
+// was inherited from the starter portal and is not part of this product.
+export function getActiveLanguages() {
+  return [{ code: "en", name: "English", nativeName: "English", isDefault: true }];
 }
 
-export async function getCurrentLanguage() {
-  const [settings, activeLanguages, cookieStore] = await Promise.all([
-    getSiteSettings(),
-    getActiveLanguages(),
-    cookies(),
-  ]);
-
-  const requested = normalizeLanguage(cookieStore.get(LANGUAGE_COOKIE_NAME)?.value);
-  const activeCodes = new Set(activeLanguages.map((language) => language.code));
-
-  if (activeCodes.has(requested)) {
-    return requested;
-  }
-
-  if (activeCodes.has(settings.siteLanguage)) {
-    return settings.siteLanguage;
-  }
-
-  return activeLanguages.find((language) => language.isDefault)?.code ?? activeLanguages[0]?.code ?? "en";
+export async function getCurrentLanguage(): Promise<SiteLanguage> {
+  return "en";
 }
