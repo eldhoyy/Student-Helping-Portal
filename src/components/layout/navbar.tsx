@@ -2,17 +2,15 @@ import Link from "next/link";
 import { GraduationCap } from "lucide-react";
 import type { Session } from "next-auth";
 import { auth } from "@/lib/auth";
-import { getActiveLanguages, getCurrentLanguage, getSiteSettings } from "@/lib/site-settings";
+import { getSiteSettings } from "@/lib/site-settings";
 import { getRuntimeDictionary } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { NavbarClient } from "./navbar-client";
 
 export async function Navbar() {
   const session = await auth();
-  const [settings, currentLanguage, languages, latestUser] = await Promise.all([
+  const [settings, latestUser] = await Promise.all([
     getSiteSettings(),
-    getCurrentLanguage(),
-    getActiveLanguages(),
     session?.user?.id
       ? prisma.user.findUnique({
           where: { id: session.user.id },
@@ -20,7 +18,8 @@ export async function Navbar() {
         })
       : Promise.resolve(null),
   ]);
-  const dict = await getRuntimeDictionary(currentLanguage);
+  const dict = await getRuntimeDictionary("en");
+
   const displaySession: Session | null =
     session && latestUser
       ? {
@@ -47,27 +46,23 @@ export async function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-40 w-full border-b bg-background/90 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
       <div className="container flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-display text-lg font-semibold text-primary">
+        <Link href="/" className="flex items-center gap-2.5 font-display text-lg font-bold tracking-tight text-primary">
           {settings.logoUrl ? (
-            <img
-              src={settings.logoUrl}
-              alt={settings.siteName}
-              className="h-8 w-8 rounded-md object-cover"
-            />
+            <img src={settings.logoUrl} alt="KTU Connect" className="h-8 w-8 rounded-lg object-cover" />
           ) : (
-            <GraduationCap className="h-6 w-6" />
+            <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground shadow-sm">
+              <GraduationCap className="h-5 w-5" />
+            </span>
           )}
-          <span className="hidden sm:inline">{settings.siteName}</span>
-          <span className="sm:hidden">SHP</span>
+          <span className="hidden sm:inline">KTU Connect</span>
+          <span className="sm:hidden">KTU</span>
         </Link>
         <NavbarClient
           links={navLinks}
           session={displaySession}
           labels={dict.nav}
-          languages={languages}
-          currentLanguage={currentLanguage}
         />
       </div>
     </header>
