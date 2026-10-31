@@ -36,26 +36,17 @@ export function LoginForm({ labels }: { labels: AuthLabels }) {
 
     try {
       const requestedCallback = searchParams.get("callbackUrl");
-      const result = await signIn("credentials", {
-        email: form.email.trim(),
-        password: form.password,
-        redirect: false,
-      });
+      const result = await signIn("credentials", { email: form.email.trim(), password: form.password, redirect: false });
 
       if (result?.error) {
         setError(result.error === "CredentialsSignin" || result.error === "CallbackRouteError" ? labels.invalidCredentials : result.error);
         return;
       }
 
-      // Read the freshly-created session so the destination is role-aware.
-      // Admins go directly to the control dashboard; normal users go home.
       const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
       const session = await sessionResponse.json();
-      const destination = requestedCallback
-        ? requestedCallback
-        : session?.user?.role === "ADMIN"
-          ? "/admin"
-          : "/";
+      const isAdmin = session?.user?.role === "ADMIN";
+      const destination = isAdmin ? (requestedCallback || "/admin") : "/";
 
       router.replace(destination);
       router.refresh();
@@ -68,29 +59,15 @@ export function LoginForm({ labels }: { labels: AuthLabels }) {
 
   return (
     <Card className="w-full max-w-md border-white/60 bg-white/90 shadow-2xl shadow-slate-900/10 backdrop-blur">
-      <CardHeader className="space-y-2">
-        <CardTitle className="font-display text-3xl">{labels.welcomeBack}</CardTitle>
-        <CardDescription>{labels.loginDescription}</CardDescription>
-      </CardHeader>
+      <CardHeader className="space-y-2"><CardTitle className="font-display text-3xl">{labels.welcomeBack}</CardTitle><CardDescription>{labels.loginDescription}</CardDescription></CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">{error}</div>}
-          <div className="space-y-2">
-            <Label htmlFor="email">{labels.email}</Label>
-            <Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" autoComplete="email" className="h-11 rounded-xl" />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">{labels.password}</Label>
-            <Input id="password" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" autoComplete="current-password" className="h-11 rounded-xl" />
-          </div>
-          <Button type="submit" className="w-full h-11 rounded-xl" disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-            {loading ? "Signing in…" : labels.login}
-          </Button>
+          <div className="space-y-2"><Label htmlFor="email">{labels.email}</Label><Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" autoComplete="email" className="h-11 rounded-xl" /></div>
+          <div className="space-y-2"><Label htmlFor="password">{labels.password}</Label><Input id="password" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" autoComplete="current-password" className="h-11 rounded-xl" /></div>
+          <Button type="submit" className="w-full h-11 rounded-xl" disabled={loading}>{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}{loading ? "Signing in…" : labels.login}</Button>
         </form>
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          {labels.noAccount}{" "}<Link href="/register" className="text-primary font-semibold hover:underline">{labels.signup}</Link>
-        </p>
+        <p className="mt-5 text-center text-sm text-muted-foreground">{labels.noAccount}{" "}<Link href="/register" className="text-primary font-semibold hover:underline">{labels.signup}</Link></p>
       </CardContent>
     </Card>
   );
