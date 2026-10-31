@@ -28,7 +28,6 @@ export function LoginForm({ labels }: { labels: AuthLabels }) {
   const [form, setForm] = React.useState({ email: "", password: "" });
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -36,22 +35,29 @@ export function LoginForm({ labels }: { labels: AuthLabels }) {
     setLoading(true);
 
     try {
+      const requestedCallback = searchParams.get("callbackUrl");
       const result = await signIn("credentials", {
-        email: form.email,
+        email: form.email.trim(),
         password: form.password,
         redirect: false,
       });
 
       if (result?.error) {
-        if (result.error === "CredentialsSignin" || result.error === "CallbackRouteError") {
-          setError(labels.invalidCredentials);
-        } else {
-          setError(result.error);
-        }
+        setError(result.error === "CredentialsSignin" || result.error === "CallbackRouteError" ? labels.invalidCredentials : result.error);
         return;
       }
 
-      router.push(callbackUrl);
+      // Read the freshly-created session so the destination is role-aware.
+      // Admins go directly to the control dashboard; normal users go home.
+      const sessionResponse = await fetch("/api/auth/session", { cache: "no-store" });
+      const session = await sessionResponse.json();
+      const destination = requestedCallback
+        ? requestedCallback
+        : session?.user?.role === "ADMIN"
+          ? "/admin"
+          : "/";
+
+      router.replace(destination);
       router.refresh();
     } catch {
       setError(labels.genericError);
@@ -61,52 +67,29 @@ export function LoginForm({ labels }: { labels: AuthLabels }) {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="font-display text-2xl">{labels.welcomeBack}</CardTitle>
+    <Card className="w-full max-w-md border-white/60 bg-white/90 shadow-2xl shadow-slate-900/10 backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="font-display text-3xl">{labels.welcomeBack}</CardTitle>
         <CardDescription>{labels.loginDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          <div className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {error && <div className="rounded-xl bg-destructive/10 border border-destructive/30 px-4 py-3 text-sm text-destructive">{error}</div>}
+          <div className="space-y-2">
             <Label htmlFor="email">{labels.email}</Label>
-            <Input
-              id="email"
-              type="email"
-              required
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              placeholder="you@example.com"
-              autoComplete="email"
-            />
+            <Input id="email" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" autoComplete="email" className="h-11 rounded-xl" />
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label htmlFor="password">{labels.password}</Label>
-            <Input
-              id="password"
-              type="password"
-              required
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
+            <Input id="password" type="password" required value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••" autoComplete="current-password" className="h-11 rounded-xl" />
           </div>
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full h-11 rounded-xl" disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
-            {labels.login}
+            {loading ? "Signing in…" : labels.login}
           </Button>
         </form>
         <p className="mt-5 text-center text-sm text-muted-foreground">
-          {labels.noAccount}{" "}
-          <Link href="/register" className="text-primary font-medium hover:underline">
-            {labels.signup}
-          </Link>
+          {labels.noAccount}{" "}<Link href="/register" className="text-primary font-semibold hover:underline">{labels.signup}</Link>
         </p>
       </CardContent>
     </Card>
