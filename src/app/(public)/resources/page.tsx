@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { ResourceCard } from "@/components/shared/resource-card";
+import { ResourceFilterLink } from "@/components/shared/resource-filter-link";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Pagination } from "@/components/shared/pagination";
-import { Badge } from "@/components/ui/badge";
 import { resourceTypeMeta } from "@/lib/content-meta";
 import type { ResourceType } from "@prisma/client";
 
@@ -74,17 +73,13 @@ export default async function ResourcesPage({
           <div>
             <h3 className="text-sm font-semibold mb-2.5">Resource Type</h3>
             <div className="flex flex-wrap gap-2">
-              <Link href={buildHref({ type: undefined, page: undefined })}>
-                <Badge variant={!params.type ? "default" : "outline"} className="cursor-pointer">
-                  All
-                </Badge>
-              </Link>
+              <ResourceFilterLink href={buildHref({ type: undefined, page: undefined })} active={!params.type}>
+                All
+              </ResourceFilterLink>
               {Object.entries(resourceTypeMeta).map(([key, meta]) => (
-                <Link key={key} href={buildHref({ type: key, page: undefined })}>
-                  <Badge variant={params.type === key ? "default" : "outline"} className="cursor-pointer">
-                    {meta.label}
-                  </Badge>
-                </Link>
+                <ResourceFilterLink key={key} href={buildHref({ type: key, page: undefined })} active={params.type === key}>
+                  {meta.label}
+                </ResourceFilterLink>
               ))}
             </div>
           </div>
@@ -93,17 +88,13 @@ export default async function ResourcesPage({
             <div>
               <h3 className="text-sm font-semibold mb-2.5">Category</h3>
               <div className="flex flex-wrap gap-2">
-                <Link href={buildHref({ category: undefined, page: undefined })}>
-                  <Badge variant={!params.category ? "default" : "outline"} className="cursor-pointer">
-                    All
-                  </Badge>
-                </Link>
+                <ResourceFilterLink href={buildHref({ category: undefined, page: undefined })} active={!params.category}>
+                  All
+                </ResourceFilterLink>
                 {categories.map((cat) => (
-                  <Link key={cat.id} href={buildHref({ category: cat.id, page: undefined })}>
-                    <Badge variant={params.category === cat.id ? "default" : "outline"} className="cursor-pointer">
-                      {cat.name}
-                    </Badge>
-                  </Link>
+                  <ResourceFilterLink key={cat.id} href={buildHref({ category: cat.id, page: undefined })} active={params.category === cat.id}>
+                    {cat.name}
+                  </ResourceFilterLink>
                 ))}
               </div>
             </div>
@@ -113,29 +104,27 @@ export default async function ResourcesPage({
             <div>
               <h3 className="text-sm font-semibold mb-2.5">Department</h3>
               <div className="flex flex-wrap gap-2">
-                <Link href={buildHref({ department: undefined, page: undefined })}>
-                  <Badge variant={!params.department ? "default" : "outline"} className="cursor-pointer">
-                    All
-                  </Badge>
-                </Link>
+                <ResourceFilterLink href={buildHref({ department: undefined, page: undefined })} active={!params.department}>
+                  All
+                </ResourceFilterLink>
                 {departments.map((dept) => (
-                  <Link key={dept.id} href={buildHref({ department: dept.id, page: undefined })}>
-                    <Badge variant={params.department === dept.id ? "default" : "outline"} className="cursor-pointer">
-                      {dept.name}
-                    </Badge>
-                  </Link>
+                  <ResourceFilterLink key={dept.id} href={buildHref({ department: dept.id, page: undefined })} active={params.department === dept.id}>
+                    {dept.name}
+                  </ResourceFilterLink>
                 ))}
               </div>
             </div>
           )}
         </aside>
 
-        <div>
+        <div className="min-w-0">
           {resources.length > 0 ? (
             <>
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {resources.map((resource) => (
-                  <ResourceCard key={resource.id} resource={resource} />
+                  <div key={resource.id} className="card-motion">
+                    <ResourceCard resource={resource} />
+                  </div>
                 ))}
               </div>
               <Pagination
