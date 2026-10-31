@@ -8,9 +8,7 @@ export async function GET() {
   if (guard) return guard;
 
   let settings = await prisma.siteSetting.findFirst();
-  if (!settings) {
-    settings = await prisma.siteSetting.create({ data: {} });
-  }
+  if (!settings) settings = await prisma.siteSetting.create({ data: { siteName: "KTU Connect", siteLanguage: "en" } });
   return NextResponse.json({ settings });
 }
 
@@ -19,18 +17,14 @@ export async function PATCH(req: Request) {
   if (guard) return guard;
 
   const body = await req.json();
-  const parsed = siteSettingSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues[0]?.message ?? "Invalid input" },
-      { status: 400 }
-    );
-  }
+  const parsed = siteSettingSchema.safeParse({ ...(await Promise.resolve(body)), siteLanguage: "en", siteName: "KTU Connect" });
+  if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid input" }, { status: 400 });
 
   const existing = await prisma.siteSetting.findFirst();
-
   const data = {
     ...parsed.data,
+    siteName: "KTU Connect",
+    siteLanguage: "en",
     logoUrl: parsed.data.logoUrl || null,
     phone: parsed.data.phone || null,
     address: parsed.data.address || null,
@@ -45,17 +39,6 @@ export async function PATCH(req: Request) {
   const settings = existing
     ? await prisma.siteSetting.update({ where: { id: existing.id }, data })
     : await prisma.siteSetting.create({ data });
-
-  const selectedLanguage = await prisma.language.findUnique({
-    where: { code: parsed.data.siteLanguage },
-  });
-  if (selectedLanguage) {
-    await prisma.language.updateMany({ data: { isDefault: false } });
-    await prisma.language.update({
-      where: { id: selectedLanguage.id },
-      data: { isDefault: true, isActive: true },
-    });
-  }
 
   return NextResponse.json({ settings });
 }
