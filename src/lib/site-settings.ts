@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { prisma } from "@/lib/prisma";
 
 export const LANGUAGE_COOKIE_NAME = "site_language";
@@ -30,16 +31,13 @@ const defaultSettings: SiteSettingsSnapshot = {
   linkedinUrl: null,
   youtubeUrl: null,
   seoTitle: "KTU Connect — Kerala Technical University Student Ecosystem",
-  seoDescription:
-    "KTU Connect is a student-first academic ecosystem for KTU students to find resources, notices, exams, academic information and opportunities.",
+  seoDescription: "KTU Connect is a student-first academic ecosystem for KTU students to find resources, notices, exams, academic information and opportunities.",
 };
 
-export async function getSiteSettings(): Promise<SiteSettingsSnapshot> {
+export const getSiteSettings = cache(async (): Promise<SiteSettingsSnapshot> => {
   try {
     const settings = await prisma.siteSetting.findFirst({
       select: {
-        siteName: true,
-        siteLanguage: true,
         logoUrl: true,
         contactEmail: true,
         phone: true,
@@ -56,8 +54,7 @@ export async function getSiteSettings(): Promise<SiteSettingsSnapshot> {
     if (!settings) return defaultSettings;
 
     return {
-      siteName: "KTU Connect",
-      siteLanguage: "en",
+      ...defaultSettings,
       logoUrl: settings.logoUrl,
       contactEmail: settings.contactEmail || defaultSettings.contactEmail,
       phone: settings.phone,
@@ -72,14 +69,12 @@ export async function getSiteSettings(): Promise<SiteSettingsSnapshot> {
   } catch {
     return defaultSettings;
   }
-}
+});
 
-// KTU Connect is intentionally English-only. The old multi-language system
-// was inherited from the starter portal and is not part of this product.
 export function getActiveLanguages() {
   return [{ code: "en", name: "English", nativeName: "English", isDefault: true }];
 }
 
-export async function getCurrentLanguage(): Promise<SiteLanguage> {
+export function getCurrentLanguage(): SiteLanguage {
   return "en";
 }
