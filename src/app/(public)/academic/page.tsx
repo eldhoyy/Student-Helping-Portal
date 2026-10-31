@@ -1,4 +1,4 @@
-import { Building2, CalendarDays, ClipboardList, ExternalLink } from "lucide-react";
+import { Building2, CalendarDays, ClipboardList } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,24 +9,6 @@ import { getRuntimeDictionary } from "@/lib/i18n";
 import { getCurrentLanguage } from "@/lib/site-settings";
 
 export const metadata = { title: "Academic Information" };
-
-const resultLinks = [
-  {
-    label: "Undergraduate Results Portal",
-    href: "https://results.gov.bd/",
-    description: "Check semester and published exam results through the national result system.",
-  },
-  {
-    label: "University Main Website",
-    href: "https://www.du.ac.bd/",
-    description: "Visit your university website for department-specific result notices and archives.",
-  },
-  {
-    label: "UGC Bangladesh",
-    href: "https://www.ugc.gov.bd/",
-    description: "Useful for official higher-education notices, circulars, and result-related updates.",
-  },
-];
 
 export default async function AcademicPage() {
   const currentLanguage = await getCurrentLanguage();
@@ -174,25 +156,14 @@ export default async function AcademicPage() {
         </TabsContent>
 
         <TabsContent value="results" className="pt-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            {resultLinks.map((link) => (
-              <Card key={link.href}>
-                <CardContent className="p-5">
-                  <ExternalLink className="h-8 w-8 text-primary mb-3" />
-                  <h3 className="font-display font-semibold mb-2">{link.label}</h3>
-                  <p className="text-sm text-muted-foreground mb-4">{link.description}</p>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-primary hover:underline"
-                  >
-                    {dict.academic.openResultLink}
-                  </a>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <h3 className="font-display text-xl font-semibold">No Upcoming Results</h3>
+              <p className="text-sm text-muted-foreground mt-2">
+                There are no upcoming result announcements at the moment.
+              </p>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>
