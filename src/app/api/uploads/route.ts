@@ -8,19 +8,18 @@ const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY;
 
-  if (!url || !serviceKey) {
-    throw new Error("Supabase Storage is not configured. Add SUPABASE_SERVICE_ROLE_KEY to the deployment environment.");
+  if (!url || !secretKey) {
+    throw new Error("Supabase Storage is not configured. Add SUPABASE_SECRET_KEY to the deployment environment.");
   }
 
-  return { url: url.replace(/\/$/, ""), serviceKey };
+  return { url: url.replace(/\/$/, ""), secretKey };
 }
 
-function headers(serviceKey: string, contentType = "application/json") {
+function headers(secretKey: string, contentType = "application/json") {
   return {
-    apikey: serviceKey,
-    Authorization: `Bearer ${serviceKey}`,
+    apikey: secretKey,
     "Content-Type": contentType,
   };
 }
@@ -38,9 +37,9 @@ function safeFilename(filename: string) {
   return `${basename || "upload"}-${crypto.randomUUID()}${extension}`;
 }
 
-async function ensureBucket(url: string, serviceKey: string) {
+async function ensureBucket(url: string, secretKey: string) {
   const check = await fetch(`${url}/storage/v1/bucket/${BUCKET}`, {
-    headers: headers(serviceKey),
+    headers: headers(secretKey),
     cache: "no-store",
   });
 
@@ -51,7 +50,7 @@ async function ensureBucket(url: string, serviceKey: string) {
 
   const create = await fetch(`${url}/storage/v1/bucket`, {
     method: "POST",
-    headers: headers(serviceKey),
+    headers: headers(secretKey),
     body: JSON.stringify({
       id: BUCKET,
       name: BUCKET,
@@ -88,8 +87,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "File must be 500MB or smaller" }, { status: 400 });
     }
 
-    const { url, serviceKey } = getSupabaseConfig();
-    await ensureBucket(url, serviceKey);
+    const { url, secretKey } = getSupabaseConfig();
+    await ensureBucket(url, secretKey);
 
     const path = `admin/${safeFilename(filename)}`;
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
@@ -97,7 +96,7 @@ export async function POST(req: Request) {
       `${url}/storage/v1/object/upload/sign/${BUCKET}/${encodedPath}`,
       {
         method: "POST",
-        headers: headers(serviceKey),
+        headers: headers(secretKey),
         body: JSON.stringify({}),
       }
     );
