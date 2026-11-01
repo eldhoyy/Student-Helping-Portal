@@ -4,7 +4,10 @@ import { requireAdminApi } from "@/lib/admin-guard";
 export const runtime = "nodejs";
 
 const BUCKET = "ktu-uploads";
-const MAX_FILE_SIZE = 500 * 1024 * 1024;
+// Supabase Free projects currently allow a maximum global file size of 50 MB.
+// The actual project limit is enforced by Supabase Storage; keeping the API
+// limit aligned prevents us from promising uploads Storage cannot accept.
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -38,10 +41,10 @@ function safeFilename(filename: string) {
 }
 
 async function ensureBucket(url: string, secretKey: string) {
-  // Creating the bucket is idempotent for our purposes: an existing bucket
-  // returns 409, while a successful creation returns 200/201.
-  // This avoids relying on the bucket-read endpoint, which can return a
-  // permission response even when a valid server secret key is configured.
+  // Create the bucket only when it does not already exist. Do not send a
+  // bucket-level file_size_limit here: Supabase rejects a bucket limit that
+  // is higher than the project's global Storage limit (for example, 50 MB on
+  // Free projects), which previously caused the 413 EntityTooLarge error.
   const create = await fetch(`${url}/storage/v1/bucket`, {
     method: "POST",
     headers: headers(secretKey),
@@ -50,7 +53,6 @@ async function ensureBucket(url: string, secretKey: string) {
       id: BUCKET,
       name: BUCKET,
       public: true,
-      file_size_limit: MAX_FILE_SIZE,
     }),
   });
 
@@ -81,7 +83,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "A valid file size is required" }, { status: 400 });
     }
     if (size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File must be 500MB or smaller" }, { status: 400 });
+      return NextResponse.json({ error: "File must be 50MB or smaller on the current Storage configuration" }, { status: 400 });
     }
 
     const { url, secretKey } = getSupabaseConfig();
