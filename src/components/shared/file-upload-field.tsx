@@ -45,6 +45,8 @@ export function FileUploadField({
       const prepared = await prepare.json();
       if (!prepare.ok) throw new Error(prepared.error || "Unable to prepare upload");
 
+      // The signed URL is the authorization for the upload. The browser must
+      // not receive or use the server-side Supabase secret key.
       const upload = await fetch(prepared.signedUrl, {
         method: "PUT",
         headers: {
