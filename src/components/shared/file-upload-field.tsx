@@ -33,17 +33,32 @@ export function FileUploadField({
 
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const res = await fetch("/api/uploads", {
+      const prepare = await fetch("/api/uploads", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: file.type,
+          size: file.size,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to upload file");
+      const prepared = await prepare.json();
+      if (!prepare.ok) throw new Error(prepared.error || "Unable to prepare upload");
 
-      onChange(data.url);
+      const upload = await fetch(prepared.signedUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": file.type || "application/octet-stream",
+          "x-upsert": "false",
+        },
+        body: file,
+      });
+      if (!upload.ok) {
+        const message = await upload.text();
+        throw new Error(message || "Failed to upload file");
+      }
+
+      onChange(prepared.publicUrl);
       toast({ title: "File uploaded", variant: "success" });
     } catch (err) {
       toast({
