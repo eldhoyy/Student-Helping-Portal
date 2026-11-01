@@ -4,9 +4,6 @@ import { requireAdminApi } from "@/lib/admin-guard";
 export const runtime = "nodejs";
 
 const BUCKET = "ktu-uploads";
-// Supabase Free projects currently allow a maximum global file size of 50 MB.
-// The actual project limit is enforced by Supabase Storage; keeping the API
-// limit aligned prevents us from promising uploads Storage cannot accept.
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 function getSupabaseConfig() {
@@ -41,10 +38,19 @@ function safeFilename(filename: string) {
 }
 
 async function ensureBucket(url: string, secretKey: string) {
-  // Create the bucket only when it does not already exist. Do not send a
-  // bucket-level file_size_limit here: Supabase rejects a bucket limit that
-  // is higher than the project's global Storage limit (for example, 50 MB on
-  // Free projects), which previously caused the 413 EntityTooLarge error.
+  // First check whether the bucket already exists. This avoids treating an
+  // already-created bucket as a setup failure on every upload.
+  const existing = await fetch(`${url}/storage/v1/bucket/${encodeURIComponent(BUCKET)}`, {
+    method: "GET",
+    headers: { apikey: secretKey },
+    cache: "no-store",
+  });
+
+  if (existing.ok) return;
+
+  // If it does not exist, create it. Do not send file_size_limit here because
+  // Supabase can reject a bucket-level limit that exceeds the project's
+  // configured global Storage limit.
   const create = await fetch(`${url}/storage/v1/bucket`, {
     method: "POST",
     headers: headers(secretKey),
@@ -56,9 +62,15 @@ async function ensureBucket(url: string, secretKey: string) {
     }),
   });
 
-  if (create.ok || create.status === 409) return;
-
   const message = await create.text();
+
+  // Supabase may report an existing bucket as HTTP 409, or as an error body
+  // containing the 409/BucketAlreadyExists code. Both mean the desired bucket
+  // is already available and the upload can continue.
+  if (create.ok || create.status === 409 || /BucketAlreadyExists|already exists/i.test(message)) {
+    return;
+  }
+
   throw new Error(
     `Supabase Storage bucket setup failed (${create.status}): ${message || "Check SUPABASE_SECRET_KEY and Supabase project access."}`
   );
