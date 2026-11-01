@@ -38,19 +38,14 @@ function safeFilename(filename: string) {
 }
 
 async function ensureBucket(url: string, secretKey: string) {
-  const check = await fetch(`${url}/storage/v1/bucket/${BUCKET}`, {
-    headers: headers(secretKey),
-    cache: "no-store",
-  });
-
-  if (check.ok) return;
-  if (check.status !== 404) {
-    throw new Error("Unable to verify the Supabase upload bucket");
-  }
-
+  // Creating the bucket is idempotent for our purposes: an existing bucket
+  // returns 409, while a successful creation returns 200/201.
+  // This avoids relying on the bucket-read endpoint, which can return a
+  // permission response even when a valid server secret key is configured.
   const create = await fetch(`${url}/storage/v1/bucket`, {
     method: "POST",
     headers: headers(secretKey),
+    cache: "no-store",
     body: JSON.stringify({
       id: BUCKET,
       name: BUCKET,
@@ -59,10 +54,12 @@ async function ensureBucket(url: string, secretKey: string) {
     }),
   });
 
-  if (!create.ok && create.status !== 409) {
-    const message = await create.text();
-    throw new Error(message || "Unable to create the Supabase upload bucket");
-  }
+  if (create.ok || create.status === 409) return;
+
+  const message = await create.text();
+  throw new Error(
+    `Supabase Storage bucket setup failed (${create.status}): ${message || "Check SUPABASE_SECRET_KEY and Supabase project access."}`
+  );
 }
 
 export async function POST(req: Request) {
@@ -103,7 +100,9 @@ export async function POST(req: Request) {
 
     if (!signResponse.ok) {
       const message = await signResponse.text();
-      throw new Error(message || "Unable to create a signed upload URL");
+      throw new Error(
+        `Supabase signed upload failed (${signResponse.status}): ${message || "Unable to create a signed upload URL"}`
+      );
     }
 
     const signed = await signResponse.json();
@@ -115,7 +114,7 @@ export async function POST(req: Request) {
     const signedUrl = new URL(relativeUrl, url).toString();
     const publicUrl = `${url}/storage/v1/object/public/${BUCKET}/${encodedPath}`;
 
-    return NextResponse.json({ signedUrl, publicUrl, path });
+    return NextResponse.json({ signedUrl, publicUrl, path, contentType });
   } catch (error) {
     console.error("Upload signing failed:", error);
     return NextResponse.json(
