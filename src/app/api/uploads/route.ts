@@ -51,18 +51,11 @@ async function ensureBucket(url: string, secretKey: string) {
     method: "POST",
     headers: headers(secretKey),
     cache: "no-store",
-    body: JSON.stringify({
-      id: BUCKET,
-      name: BUCKET,
-      public: true,
-    }),
+    body: JSON.stringify({ id: BUCKET, name: BUCKET, public: true }),
   });
 
   const message = await create.text();
-
-  if (create.ok || create.status === 409 || /BucketAlreadyExists|already exists/i.test(message)) {
-    return;
-  }
+  if (create.ok || create.status === 409 || /BucketAlreadyExists|already exists/i.test(message)) return;
 
   throw new Error(
     `Supabase Storage bucket setup failed (${create.status}): ${message || "Check SUPABASE_SECRET_KEY and Supabase project access."}`
@@ -81,47 +74,43 @@ export async function POST(req: Request) {
       : "application/octet-stream";
     const size = Number(body?.size ?? 0);
 
-    if (!filename.trim()) {
-      return NextResponse.json({ error: "Filename is required" }, { status: 400 });
-    }
-    if (!Number.isFinite(size) || size <= 0) {
-      return NextResponse.json({ error: "A valid file size is required" }, { status: 400 });
-    }
-    if (size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File must be 50MB or smaller on the current Storage configuration" }, { status: 400 });
-    }
+    if (!filename.trim()) return NextResponse.json({ error: "Filename is required" }, { status: 400 });
+    if (!Number.isFinite(size) || size <= 0) return NextResponse.json({ error: "A valid file size is required" }, { status: 400 });
+    if (size > MAX_FILE_SIZE) return NextResponse.json({ error: "File must be 50MB or smaller on the current Storage configuration" }, { status: 400 });
 
     const { url, secretKey } = getSupabaseConfig();
     await ensureBucket(url, secretKey);
 
     const path = `admin/${safeFilename(filename)}`;
     const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-    const signResponse = await fetch(
-      `${url}/storage/v1/object/upload/sign/${BUCKET}/${encodedPath}`,
-      {
-        method: "POST",
-        headers: headers(secretKey),
-        body: JSON.stringify({}),
-      }
-    );
+    const signResponse = await fetch(`${url}/storage/v1/object/upload/sign/${BUCKET}/${encodedPath}`, {
+      method: "POST",
+      headers: headers(secretKey),
+      body: JSON.stringify({}),
+    });
 
     if (!signResponse.ok) {
       const message = await signResponse.text();
-      throw new Error(
-        `Supabase signed upload failed (${signResponse.status}): ${message || "Unable to create a signed upload URL"}`
-      );
+      throw new Error(`Supabase signed upload failed (${signResponse.status}): ${message || "Unable to create a signed upload URL"}`);
     }
 
     const signed = await signResponse.json();
     const relativeUrl = signed.url ?? signed.signedURL ?? signed.signedUrl;
-    if (!relativeUrl) {
-      throw new Error("Supabase did not return a signed upload URL");
-    }
+    if (!relativeUrl) throw new Error("Supabase did not return a signed upload URL");
 
-    const signedUrl = new URL(relativeUrl, url).toString();
+    const signedUrlObject = new URL(relativeUrl, url);
+    const token = signed.token ?? signedUrlObject.searchParams.get("token");
+    if (!token) throw new Error("Supabase did not return a signed upload token");
+    if (!signedUrlObject.searchParams.get("token")) signedUrlObject.searchParams.set("token", token);
+
     const publicUrl = `${url}/storage/v1/object/public/${BUCKET}/${encodedPath}`;
-
-    return NextResponse.json({ signedUrl, publicUrl, path, contentType });
+    return NextResponse.json({
+      signedUrl: signedUrlObject.toString(),
+      token,
+      publicUrl,
+      path,
+      contentType,
+    });
   } catch (error) {
     console.error("Upload signing failed:", error);
     return NextResponse.json(
