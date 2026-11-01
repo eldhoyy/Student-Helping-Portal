@@ -20,6 +20,7 @@ function getSupabaseConfig() {
 function headers(secretKey: string, contentType = "application/json") {
   return {
     apikey: secretKey,
+    Authorization: `Bearer ${secretKey}`,
     "Content-Type": contentType,
   };
 }
@@ -38,19 +39,14 @@ function safeFilename(filename: string) {
 }
 
 async function ensureBucket(url: string, secretKey: string) {
-  // First check whether the bucket already exists. This avoids treating an
-  // already-created bucket as a setup failure on every upload.
   const existing = await fetch(`${url}/storage/v1/bucket/${encodeURIComponent(BUCKET)}`, {
     method: "GET",
-    headers: { apikey: secretKey },
+    headers: headers(secretKey),
     cache: "no-store",
   });
 
   if (existing.ok) return;
 
-  // If it does not exist, create it. Do not send file_size_limit here because
-  // Supabase can reject a bucket-level limit that exceeds the project's
-  // configured global Storage limit.
   const create = await fetch(`${url}/storage/v1/bucket`, {
     method: "POST",
     headers: headers(secretKey),
@@ -64,9 +60,6 @@ async function ensureBucket(url: string, secretKey: string) {
 
   const message = await create.text();
 
-  // Supabase may report an existing bucket as HTTP 409, or as an error body
-  // containing the 409/BucketAlreadyExists code. Both mean the desired bucket
-  // is already available and the upload can continue.
   if (create.ok || create.status === 409 || /BucketAlreadyExists|already exists/i.test(message)) {
     return;
   }
