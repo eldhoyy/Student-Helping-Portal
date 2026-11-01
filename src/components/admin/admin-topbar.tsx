@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Menu, LogOut } from "lucide-react";
+import { Menu, LogOut, Home } from "lucide-react";
 import type { Session } from "next-auth";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -67,7 +67,6 @@ export function AdminTopbar({
     { href: "/admin/exams", label: labels.examSchedule },
     { href: "/admin/messages", label: labels.messages },
     { href: "/admin/users", label: labels.users },
-    { href: "/admin/languages", label: labels.languages },
     { href: "/admin/settings", label: labels.settings },
   ];
 
@@ -77,7 +76,7 @@ export function AdminTopbar({
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/95 backdrop-blur px-4 md:px-6">
+      <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/95 backdrop-blur px-4 md:px-6">
         <Button
           variant="ghost"
           size="icon"
@@ -87,10 +86,21 @@ export function AdminTopbar({
         >
           <Menu className="h-5 w-5" />
         </Button>
-        <div className="flex-1">
+
+        <div className="flex-1 min-w-0">
           <Breadcrumbs homeLabel={common.home} detailLabel={labels.detail} />
         </div>
-        <div className="flex items-center gap-3">
+
+        <Link
+          href="/"
+          className="hidden sm:inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          aria-label={common.home}
+        >
+          <Home className="h-4 w-4" />
+          <span>{common.home}</span>
+        </Link>
+
+        <div className="flex items-center gap-2">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="text-xs">{initials}</AvatarFallback>
           </Avatar>
@@ -98,6 +108,7 @@ export function AdminTopbar({
             variant="ghost"
             size="sm"
             onClick={() => signOut({ callbackUrl: "/" })}
+            className="hidden sm:inline-flex"
           >
             <LogOut className="mr-2 h-4 w-4" /> {labels.logout}
           </Button>
@@ -110,8 +121,17 @@ export function AdminTopbar({
             className="absolute inset-0 bg-black/50"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute left-0 top-0 h-full w-64 bg-card p-4 overflow-y-auto">
-            <p className="mb-4 font-display font-semibold">{labels.panel}</p>
+          <div className="absolute left-0 top-0 h-full w-72 bg-card p-4 overflow-y-auto">
+            <div className="mb-4 flex items-center justify-between">
+              <p className="font-display font-semibold">{labels.panel}</p>
+              <Link
+                href="/"
+                className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-primary hover:bg-secondary"
+              >
+                <Home className="h-4 w-4" />
+                {common.home}
+              </Link>
+            </div>
             <nav className="space-y-1">
               {flatLinks.map((link) => {
                 const active =
@@ -123,7 +143,7 @@ export function AdminTopbar({
                     key={link.href}
                     href={link.href}
                     className={cn(
-                      "block rounded-md px-3 py-2 text-sm font-medium",
+                      "block rounded-md px-3 py-2.5 text-sm font-medium",
                       active
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-secondary"
